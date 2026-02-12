@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fundamentos de System Design</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #e8ff47;
+    --accent2: #ff6b6b;
+    --accent3: #47d3ff;
+    --accent4: #b847ff;
+    --text: #e8e8f0;
+    --muted: #5a5a78;
+    --card: #16161f;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  .header {
+    margin-bottom: 80px;
+    position: relative;
+  }
+
+  .header-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-tag::before {
+    content: '';
+    width: 24px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 6vw, 72px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .header p {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 540px;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .example-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    margin-top: 24px;
+    letter-spacing: 0.1em;
+  }
+
+  /* PHASES NAV */
+  .phases-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 48px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .phase-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    border-radius: 3px;
+  }
+
+  .phase-btn:hover, .phase-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(232, 255, 71, 0.04);
+  }
+
+  /* MAIN FLOW */
+  .flow {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .flow.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTION TITLE */
+  .section-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 64px;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+    min-width: 70px;
+    margin-top: -8px;
+  }
+
+  .section-info h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .section-info p {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 300;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+
+  /* CARDS GRID */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: default;
+  }
+
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+  }
+
+  .card-icon {
+    font-size: 24px;
+    margin-bottom: 14px;
+    display: block;
+  }
+
+  .card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .card-example {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    line-height: 1.5;
+  }
+
+  .card-example .label {
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* DIAGRAM */
+  .diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 32px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+
+  .diagram-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  /* Flow diagram */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    min-width: 500px;
+  }
+
+  .flow-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    text-align: center;
+    min-width: 100px;
+    position: relative;
+  }
+
+  .flow-node .node-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+
+  .flow-node.highlight {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .flow-arrow {
+    color: var(--muted);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* Layer diagram */
+  .layers {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .layer-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    min-width: 130px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .layer-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pill {
+    padding: 5px 12px;
+    border-radius: 100px;
+    font-size: 11px;
+    border: 1px solid;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* INSIGHT BOX */
+  .insight {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    background: rgba(232, 255, 71, 0.03);
+    border-radius: 0 4px 4px 0;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .insight-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .insight p {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+    font-weight: 300;
+  }
+
+  /* TRADEOFFS TABLE */
+  .tradeoffs {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 32px;
+  }
+
+  .tradeoffs th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tradeoffs td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(30, 30, 46, 0.6);
+    font-weight: 300;
+    vertical-align: top;
+  }
+
+  .tradeoffs tr:hover td {
+    background: rgba(255,255,255,0.01);
+  }
+
+  .tag-green { color: #6bff8a; }
+  .tag-red { color: var(--accent2); }
+  .tag-yellow { color: var(--accent); }
+
+  /* ALL PHASES OVERVIEW */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+
+  .overview-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .overview-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+  }
+
+  .overview-card:hover { border-color: var(--accent); }
+  .overview-card:hover::before { transform: scaleX(1); }
+
+  .ov-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .ov-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .ov-desc {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  .nav-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 32px;
+  }
+
+  .nav-hint span { color: var(--accent); }
+
+  /* responsive */
+  @media (max-width: 600px) {
+    .flow-diagram { min-width: 400px; }
+    .section-number { font-size: 40px; min-width: 48px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <header class="header">
+    <div class="header-tag">System Design · Fundamentos</div>
+    <h1>Todo proyecto,<br><span>de principio a fin</span></h1>
+    <p>Sin importar si es una app, un sitio, una plataforma interna — hay pilares que todos los proyectos comparten. Esto es lo que necesitas entender.</p>
+    <div class="example-badge">
+      <span>▶</span>
+      Ejemplo de referencia: Spotify / App de streaming de música
+    </div>
+  </header>
+
+  <!-- NAV -->
+  <div class="phases-nav">
+    <button class="phase-btn active" onclick="show('overview')">Vista General</button>
+    <button class="phase-btn" onclick="show('req')">01 · Requisitos</button>
+    <button class="phase-btn" onclick="show('arch')">02 · Arquitectura</button>
+    <button class="phase-btn" onclick="show('data')">03 · Datos</button>
+    <button class="phase-btn" onclick="show('api')">04 · API y Comunicación</button>
+    <button class="phase-btn" onclick="show('scale')">05 · Escala y Performance</button>
+    <button class="phase-btn" onclick="show('security')">06 · Seguridad</button>
+    <button class="phase-btn" onclick="show('ops')">07 · Operaciones</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="overview" class="flow visible">
+    <div class="section-header">
+      <div class="section-info">
+        <h2>Las 7 capas de todo proyecto</h2>
+        <p>Cada proyecto pasa — de alguna forma — por estas fases. El orden puede variar, las herramientas cambian, pero los conceptos son universales. Haz clic en cualquiera para explorarla.</p>
+      </div>
+    </div>
+
+    <div class="overview-grid">
+      <div class="overview-card" onclick="show('req')">
+        <div class="ov-num">01</div>
+        <div class="ov-title">Requisitos</div>
+        <div class="ov-desc">Qué necesita hacer el sistema. Funcional vs. no funcional. Constraints reales.</div>
+      </div>
+      <div class="overview-card" onclick="show('arch')">
+        <div class="ov-num">02</div>
+        <div class="ov-title">Arquitectura</div>
+        <div class="ov-desc">Cómo se organizan las piezas. Monolito vs. microservicios. Capas del sistema.</div>
+      </div>
+      <div class="overview-card" onclick="show('data')">
+        <div class="ov-num">03</div>
+        <div class="ov-title">Datos</div>
+        <div class="ov-desc">Cómo se almacenan, modelan y consultan los datos. SQL vs NoSQL. Caché.</div>
+      </div>
+      <div class="overview-card" onclick="show('api')">
+        <div class="ov-num">04</div>
+        <div class="ov-title">API y Comunicación</div>
+        <div class="ov-desc">Cómo se hablan las piezas entre sí. REST, WebSockets, colas de mensajes.</div>
+      </div>
+      <div class="overview-card" onclick="show('scale')">
+        <div class="ov-num">05</div>
+        <div class="ov-title">Escala y Performance</div>
+        <div class="ov-desc">Qué pasa cuando llegan más usuarios. CDN, load balancers, horizontal scaling.</div>
+      </div>
+      <div class="overview-card" onclick="show('security')">
+        <div class="ov-num">06</div>
+        <div class="ov-title">Seguridad</div>
+        <div class="ov-desc">Quién puede hacer qué. Autenticación, autorización, encriptación.</div>
+      </div>
+      <div class="overview-card" onclick="show('ops')">
+        <div class="ov-num">07</div>
+        <div class="ov-title">Operaciones</div>
+        <div class="ov-desc">Cómo se despliega, monitorea y mantiene vivo el sistema en producción.</div>
+      </div>
+    </div>
+
+    <div class="diagram" style="margin-top: 32px;">
+      <div class="diagram-title">Flujo de una request — desde el usuario hasta la base de datos</div>
+      <div class="flow-diagram">
+        <div class="flow-node highlight"><div class="node-label">Usuario</div>Browser / App</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Red</div>CDN / DNS</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Entrada</div>Load Balancer</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Lógica</div>Servidor / API</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Caché</div>Redis / Memcached</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight"><div class="node-label">Datos</div>Base de datos</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">💡 El principio clave</div>
+      <p>Como diseñador, tu trabajo es entender cómo cada decisión técnica afecta la experiencia. Cada capa tiene constrainits reales: la latencia dicta si un hover state puede ser animado, la arquitectura determina si un feature es posible, la escala define si el diseño va a aguantar.</p>
+    </div>
+
+    <div class="nav-hint">← <span>Navega por las secciones arriba</span> para explorar cada pieza en detalle</div>
+  </div>
+
+  <!-- 01 REQUISITOS -->
+  <div id="req" class="flow">
+    <div class="section-header">
+      <div class="section-number">01</div>
+      <div class="section-info">
+        <h2>Requisitos</h2>
+        <p>Antes de diseñar una sola pantalla o escribir una línea de código, el equipo necesita entender qué debe hacer el sistema — y con qué limitaciones reales operará.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">🎯</span>
+        <h3>Requisitos Funcionales</h3>
+        <p>Lo que el sistema debe hacer. Las features concretas que el usuario experimentará directamente.</p>
+        <div class="card-example">
+          <div class="label">Ejemplo Spotify</div>
+          Reproducir canciones<br>
+          Crear y editar playlists<br>
+          Buscar por artista/álbum<br>
+          Seguir a otros usuarios
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">⚙️</span>
+        <h3>Requisitos No Funcionales</h3>
+        <p>Cómo debe comportarse el sistema. Performance, disponibilidad, seguridad — constraints que el usuario no ve pero que determinan todo.</p>
+        <div class="card-example">
+          <div class="label">Ejemplo Spotify</div>
+          99.99% uptime<br>
+          &lt;200ms latencia en búsqueda<br>
+          500M usuarios simultáneos<br>
+          Streaming sin interrupciones
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent2);"></div>
+        <span class="card-icon">🔢</span>
+        <h3>Estimaciones de Escala</h3>
+        <p>Cuántos usuarios, cuántos datos, cuántas operaciones por segundo. Esto determina absolutamente todo el diseño técnico.</p>
+        <div class="card-example">
+          <div class="label">Ejemplo Spotify</div>
+          500M usuarios activos<br>
+          ~50M canciones<br>
+          ~1B streams por día<br>
+          ~10TB de audio nuevo/mes
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">🔗 Por qué le importa al diseñador</div>
+      <p>Los requisitos no funcionales generan constraints de diseño reales. Si el sistema necesita funcionar offline, hay que diseñar estados de error. Si hay latencia alta, los loading states son críticos. Si el usuario tiene datos limitados, el diseño debe permitir configuración. Estos números no son de ingeniería — son de producto.</p>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-title">Jerarquía de decisiones — de requisito a decisión técnica</div>
+      <div class="layers">
+        <div class="layer" style="background: rgba(232,255,71,0.04)">
+          <div class="layer-name">Necesidad de negocio</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent); color: var(--accent)">Retener usuarios</span>
+            <span class="pill" style="border-color: var(--accent); color: var(--accent)">Crecer a 500M</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(71,211,255,0.04)">
+          <div class="layer-name">Req. funcional</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Recommendations</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Offline mode</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(184,71,255,0.04)">
+          <div class="layer-name">Req. no funcional</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent4); color: var(--accent4)">&lt;100ms respuesta</span>
+            <span class="pill" style="border-color: var(--accent4); color: var(--accent4)">Sync en background</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(255,107,107,0.04)">
+          <div class="layer-name">Decisión técnica</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">ML pipeline</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">SQLite local</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">Service Worker</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 ARQUITECTURA -->
+  <div id="arch" class="flow">
+    <div class="section-header">
+      <div class="section-number">02</div>
+      <div class="section-info">
+        <h2>Arquitectura</h2>
+        <p>Cómo se organiza el sistema en piezas. La decisión más temprana y la más difícil de cambiar después. Define qué es posible a futuro.</p>
+      </div>
+    </div>
+
+    <table class="tradeoffs">
+      <thead>
+        <tr>
+          <th>Patrón</th>
+          <th>Qué es</th>
+          <th>Ventaja</th>
+          <th>Desventaja</th>
+          <th>Cuándo usarlo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-family:'DM Mono',monospace; color: var(--accent)">Monolito</td>
+          <td>Todo el código en un solo sistema desplegable</td>
+          <td class="tag-green">Simple al inicio. Fácil de debuggear.</td>
+          <td class="tag-red">Difícil escalar independientemente</td>
+          <td>Proyectos nuevos, MVPs, equipos pequeños</td>
+        </tr>
+        <tr>
+          <td style="font-family:'DM Mono',monospace; color: var(--accent3)">Microservicios</td>
+          <td>Cada feature es un servicio independiente</td>
+          <td class="tag-green">Escala y deploya por separado</td>
+          <td class="tag-red">Complejidad operacional alta</td>
+          <td>Equipos grandes, features muy diferentes</td>
+        </tr>
+        <tr>
+          <td style="font-family:'DM Mono',monospace; color: var(--accent4)">Serverless</td>
+          <td>Funciones que corren solo cuando se necesitan</td>
+          <td class="tag-green">Cero infra que manejar, paga lo que usas</td>
+          <td class="tag-red">Cold starts, difícil de testear local</td>
+          <td>Features esporádicos, procesamiento de eventos</td>
+        </tr>
+        <tr>
+          <td style="font-family:'DM Mono',monospace; color: var(--accent2)">Event-driven</td>
+          <td>Los sistemas se comunican a través de eventos asíncronos</td>
+          <td class="tag-green">Desacoplado, resiliente</td>
+          <td class="tag-red">Difícil de trazar y debuggear</td>
+          <td>Cuando los servicios no pueden esperar respuesta</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="diagram">
+      <div class="diagram-title">Arquitectura Spotify — simplificada</div>
+      <div class="layers">
+        <div class="layer" style="background: rgba(232,255,71,0.03); border: 1px solid var(--border)">
+          <div class="layer-name">Clientes</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--muted); color: var(--text)">Web App</span>
+            <span class="pill" style="border-color: var(--muted); color: var(--text)">iOS / Android</span>
+            <span class="pill" style="border-color: var(--muted); color: var(--text)">Desktop</span>
+            <span class="pill" style="border-color: var(--muted); color: var(--text)">Smart TV</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(232,255,71,0.03); border: 1px solid var(--border)">
+          <div class="layer-name">API Gateway</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent); color: var(--accent)">Auth</span>
+            <span class="pill" style="border-color: var(--accent); color: var(--accent)">Rate Limiting</span>
+            <span class="pill" style="border-color: var(--accent); color: var(--accent)">Routing</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(71,211,255,0.03); border: 1px solid var(--border)">
+          <div class="layer-name">Microservicios</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">User Service</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Search Service</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Streaming</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Recommendations</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Playlist</span>
+            <span class="pill" style="border-color: var(--accent3); color: var(--accent3)">Social</span>
+          </div>
+        </div>
+        <div class="layer" style="background: rgba(255,107,107,0.03); border: 1px solid var(--border)">
+          <div class="layer-name">Storage</div>
+          <div class="layer-content">
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">PostgreSQL</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">Cassandra</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">S3 (audio)</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">Redis</span>
+            <span class="pill" style="border-color: var(--accent2); color: var(--accent2)">Elasticsearch</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 DATOS -->
+  <div id="data" class="flow">
+    <div class="section-header">
+      <div class="section-number">03</div>
+      <div class="section-info">
+        <h2>Datos</h2>
+        <p>Todo sistema produce y consume datos. La decisión de cómo almacenarlos define qué preguntas puedes responder, qué tan rápido, y con qué garantías.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">📊</span>
+        <h3>SQL / Relacional</h3>
+        <p>Datos estructurados con relaciones claras. ACID garantías. Ideal cuando la consistencia importa más que la velocidad.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Usuarios, suscripciones, transacciones. Datos que no pueden estar incorrectos.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">📦</span>
+        <h3>NoSQL / Documental</h3>
+        <p>Datos flexibles, sin schema fijo. Escala horizontal más fácil. Sacrifica consistencia por disponibilidad.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Historial de escuchas, actividad de usuarios — millones de writes por segundo.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent2);"></div>
+        <span class="card-icon">⚡</span>
+        <h3>Caché</h3>
+        <p>Copias en memoria de datos frecuentemente accedidos. Dramáticamente más rápido que ir a la base de datos.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Top charts, playlists populares, datos de canciones — millones los piden, cambian poco.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent4);"></div>
+        <span class="card-icon">🔍</span>
+        <h3>Search Engine</h3>
+        <p>Bases de datos especializadas para búsqueda full-text con relevancia, facets y velocidad.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Buscar "Daft Punk" debe retornar artistas, canciones, álbumes relevantes en &lt;100ms.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: #6bff8a;"></div>
+        <span class="card-icon">📁</span>
+        <h3>Object Storage</h3>
+        <p>Archivos grandes: imágenes, audio, video. No se estructura ni se consulta — solo se almacena y sirve.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          ~50M canciones en múltiples bitrates = decenas de petabytes en S3.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: #ff9f47;"></div>
+        <span class="card-icon">🔄</span>
+        <h3>Message Queue</h3>
+        <p>Cola de eventos y trabajos asíncronos. Desacopla quién produce datos de quién los consume.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Un stream → actualiza historial + recommendations + charts + analytics. Todos por separado.
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">💡 El teorema que debes conocer — CAP</div>
+      <p>Todo sistema distribuido solo puede garantizar 2 de 3 cosas: <strong style="color:var(--accent)">Consistencia</strong> (todos ven los mismos datos), <strong style="color:var(--accent3)">Disponibilidad</strong> (siempre responde), <strong style="color:var(--accent2)">Tolerancia a particiones</strong> (funciona aunque se caiga parte de la red). La mayoría de sistemas modernos eligen AP — prefieren estar disponibles aunque los datos no sean perfectamente consistentes.</p>
+    </div>
+  </div>
+
+  <!-- 04 API -->
+  <div id="api" class="flow">
+    <div class="section-header">
+      <div class="section-number">04</div>
+      <div class="section-info">
+        <h2>API y Comunicación</h2>
+        <p>Cómo se hablan las diferentes partes del sistema entre sí — y cómo el frontend habla con el backend. El contrato entre capas.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">🌐</span>
+        <h3>REST API</h3>
+        <p>El estándar. Recursos como URLs, verbos HTTP (GET, POST, PUT, DELETE). Stateless. Cacheable. Universal.</p>
+        <div class="card-example">
+          <div class="label">Ejemplo</div>
+          GET /api/songs/4234<br>
+          POST /api/playlists<br>
+          DELETE /api/playlists/12/songs/5
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent4);"></div>
+        <span class="card-icon">📡</span>
+        <h3>WebSockets</h3>
+        <p>Conexión persistente bidireccional. El servidor puede enviar datos sin que el cliente pregunte. Tiempo real.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Mostrar qué están escuchando tus amigos ahora mismo. Sincronizar estado entre dispositivos.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">🔄</span>
+        <h3>Message Queue</h3>
+        <p>Comunicación asíncrona entre servicios. Un servicio publica un evento, otros lo consumen cuando pueden.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Al terminar una canción → Kafka evento → actualiza 5 sistemas independientemente.
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-title">Síncrono vs. Asíncrono — cuándo usar cada uno</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="background: rgba(232,255,71,0.04); border: 1px solid rgba(232,255,71,0.2); border-radius: 6px; padding: 20px;">
+          <div style="font-family:'DM Mono',monospace; font-size:11px; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 14px; text-transform: uppercase;">Síncrono (REST)</div>
+          <div style="font-size: 13px; color: var(--muted); line-height: 1.7; font-weight: 300;">
+            El cliente espera la respuesta.<br><br>
+            ✓ Buscar una canción<br>
+            ✓ Cargar una playlist<br>
+            ✓ Login del usuario<br>
+            ✗ Procesar un pago complejo
+          </div>
+        </div>
+        <div style="background: rgba(71,211,255,0.04); border: 1px solid rgba(71,211,255,0.2); border-radius: 6px; padding: 20px;">
+          <div style="font-family:'DM Mono',monospace; font-size:11px; color: var(--accent3); letter-spacing: 0.1em; margin-bottom: 14px; text-transform: uppercase;">Asíncrono (Queue)</div>
+          <div style="font-size: 13px; color: var(--muted); line-height: 1.7; font-weight: 300;">
+            El cliente no espera. Se notifica después.<br><br>
+            ✓ Generar recommendations<br>
+            ✓ Enviar email de confirmación<br>
+            ✓ Actualizar analytics<br>
+            ✓ Transcodificar audio subido
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 SCALE -->
+  <div id="scale" class="flow">
+    <div class="section-header">
+      <div class="section-number">05</div>
+      <div class="section-info">
+        <h2>Escala y Performance</h2>
+        <p>Qué pasa cuando el sistema funciona bien — y llega mucho más tráfico del esperado. Las técnicas para que el sistema aguante.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">⚖️</span>
+        <h3>Load Balancer</h3>
+        <p>Distribuye el tráfico entre múltiples servidores. Si uno falla, los demás absorben la carga.</p>
+        <div class="card-example">
+          <div class="label">Resultado</div>
+          100M requests/min distribuidos en 1,000 servidores. Ninguno se satura.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">🌍</span>
+        <h3>CDN</h3>
+        <p>Servidores en todo el mundo que guardan copias de tu contenido. El usuario accede al más cercano.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          La portada del álbum se sirve desde un servidor en tu ciudad, no desde Suecia.
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent2);"></div>
+        <span class="card-icon">📈</span>
+        <h3>Horizontal Scaling</h3>
+        <p>Agregar más servidores (en vez de hacer uno más poderoso). Permite escalar casi infinitamente.</p>
+        <div class="card-example">
+          <div class="label">vs Vertical</div>
+          Vertical: 1 servidor de $10,000<br>
+          Horizontal: 100 servidores de $100
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent4);"></div>
+        <span class="card-icon">💾</span>
+        <h3>Caché Strategy</h3>
+        <p>No ir a la base de datos si ya tienes la respuesta. El 80% del tráfico pide el mismo 20% de datos.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Top 50 Global cambia cada hora. Cache por 1 hora = 99.9% menos queries a DB.
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">📐 Regla de diseño derivada</div>
+      <p>El rendimiento percibido importa más que el rendimiento real. Un skeleton loader hace que 800ms se sientan como 300ms. Optimistic UI — actualizar la interfaz antes de confirmar con el servidor — puede hacer la experiencia sentirse instantánea. Los patrones de diseño de loading no son estéticos, son ingeniería de percepción.</p>
+    </div>
+  </div>
+
+  <!-- 06 SECURITY -->
+  <div id="security" class="flow">
+    <div class="section-header">
+      <div class="section-number">06</div>
+      <div class="section-info">
+        <h2>Seguridad</h2>
+        <p>Quién puede hacer qué, y cómo se protegen los datos. No es un feature — es el cimiento sobre el que todo lo demás se construye.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">🔑</span>
+        <h3>Autenticación</h3>
+        <p>Verificar quién eres. Contraseñas + hashing, OAuth con Google/Facebook, tokens JWT, 2FA.</p>
+        <div class="card-example">
+          <div class="label">Flujo básico</div>
+          Login → servidor verifica → emite JWT token → cliente lo usa en cada request
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">🛡️</span>
+        <h3>Autorización</h3>
+        <p>Verificar qué puedes hacer. Rol-based access: el usuario Free no puede descargar canciones.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Free: stream con ads, no offline<br>
+          Premium: todo<br>
+          Artist: sube contenido<br>
+          Admin: gestiona plataforma
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent2);"></div>
+        <span class="card-icon">🔒</span>
+        <h3>Encriptación</h3>
+        <p>Datos en tránsito (HTTPS/TLS) y en reposo (datos sensibles en DB encriptados). Siempre.</p>
+        <div class="card-example">
+          <div class="label">Qué encriptar</div>
+          Passwords (hashed, no encriptados)<br>
+          Datos de pago<br>
+          Mensajes privados<br>
+          Tokens de sesión
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent4);"></div>
+        <span class="card-icon">🚦</span>
+        <h3>Rate Limiting</h3>
+        <p>Límites de cuántas requests puede hacer un usuario/IP. Previene abuso y ataques DDoS.</p>
+        <div class="card-example">
+          <div class="label">Ejemplo</div>
+          Max 100 requests/min por IP.<br>
+          Max 10 intentos de login/hora.<br>
+          Max 5 cuentas por tarjeta.
+        </div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">🔗 Implicación de diseño directa</div>
+      <p>La seguridad genera la necesidad de diseñar flujos completos: pantallas de error de permisos, onboarding de verificación en dos pasos, mensajes de "sesión expirada", flows de recuperación de contraseña, estados de cuenta bloqueada. Cada constraint de seguridad genera al menos 2-3 pantallas que el diseñador debe anticipar.</p>
+    </div>
+  </div>
+
+  <!-- 07 OPS -->
+  <div id="ops" class="flow">
+    <div class="section-header">
+      <div class="section-number">07</div>
+      <div class="section-info">
+        <h2>Operaciones</h2>
+        <p>Cómo vive el sistema en producción. Deployment, monitoreo, recovery. Un sistema bien diseñado falla de manera predecible y se recupera solo.</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent);"></div>
+        <span class="card-icon">🚀</span>
+        <h3>CI/CD</h3>
+        <p>Continuous Integration / Continuous Deployment. Cada cambio de código es probado y desplegado automáticamente.</p>
+        <div class="card-example">
+          <div class="label">Flujo</div>
+          Código → Tests automáticos → Staging → Deploy a producción (sin humanos)
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent3);"></div>
+        <span class="card-icon">📊</span>
+        <h3>Observabilidad</h3>
+        <p>Logs, métricas y trazas. Saber qué está pasando en el sistema en tiempo real y cuándo algo falla.</p>
+        <div class="card-example">
+          <div class="label">Qué monitorear</div>
+          Latencia p95/p99<br>
+          Error rate<br>
+          CPU / Memory<br>
+          Streams fallidos
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent2);"></div>
+        <span class="card-icon">🏳️</span>
+        <h3>Feature Flags</h3>
+        <p>Activar o desactivar features sin deployar código. Permite rollouts graduales y A/B testing.</p>
+        <div class="card-example">
+          <div class="label">En Spotify</div>
+          Activar nuevo diseño solo al 5% de usuarios → medir → escalar si funciona
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-accent" style="background: var(--accent4);"></div>
+        <span class="card-icon">🔄</span>
+        <h3>Disaster Recovery</h3>
+        <p>Backups, failover automático, runbooks. Qué pasa cuando algo falla — y siempre falla.</p>
+        <div class="card-example">
+          <div class="label">Métricas clave</div>
+          RTO: cuánto tarda en recuperarse<br>
+          RPO: cuántos datos se pueden perder<br>
+          Uptime SLA: 99.99% = 53min/año down
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-title">Feature Flag — flujo de lanzamiento gradual</div>
+      <div class="flow-diagram">
+        <div class="flow-node"><div class="node-label">Código</div>Feature lista</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Deploy</div>Flag = off</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight"><div class="node-label">Activar</div>5% usuarios</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="node-label">Medir</div>Métricas OK</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight"><div class="node-label">Escalar</div>100% usuarios</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <div class="insight-label">💡 Por qué feature flags cambian el diseño</div>
+      <p>Los feature flags significan que distintos usuarios verán distintas versiones simultáneamente. Como diseñador, debes anticipar ambas. También significan que puedes lanzar cambios graduales y medirlos — un argumento enorme para hacer A/B testing de decisiones de diseño con datos reales antes de hacer un rollout completo.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function show(id) {
+  // Hide all
+  document.querySelectorAll('.flow').forEach(f => f.classList.remove('visible'));
+  document.querySelectorAll('.phase-btn').forEach(b => b.classList.remove('active'));
+  
+  // Show selected
+  document.getElementById(id).classList.add('visible');
+  
+  // Update nav
+  const idx = ['overview','req','arch','data','api','scale','security','ops'].indexOf(id);
+  document.querySelectorAll('.phase-btn')[idx].classList.add('active');
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Make overview cards clickable
+document.querySelectorAll('.overview-card').forEach(card => {
+  card.style.cursor = 'pointer';
+});
+</script>
+
+</body>
+</html>
