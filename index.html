@@ -122,6 +122,28 @@
     padding-bottom: 4px;
   }
 
+  /* Scrollbar para navegadores basados en WebKit (Chrome, Safari, Edge) */
+.phases-nav::-webkit-scrollbar {
+  height: 6px;              /* altura del scrollbar horizontal */
+  background: transparent;   /* fondo transparente */
+}
+
+.phases-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2); /* color del "thumb" */
+  border-radius: 3px;
+}
+
+.phases-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4); /* al pasar el mouse */
+}
+
+/* Firefox */
+.phases-nav {
+  scrollbar-width: thin;           /* grosor del scrollbar */
+  scrollbar-color: rgba(255,255,255,0.2) transparent; /* thumb y track */
+}
+
+
   .phase-btn {
     background: var(--surface);
     border: 1px solid var(--border);
